@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SHAHEEN CINEMATIC STUDIO"
+description = "A cinematic link-in-bio visual builder for designing, previewing, and exporting polished social profile pages with editable links, themes, and motion."
+version = "1.0.0"
+id = "artifacts/shaheen-cinematic-studio"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22445
+
+[services.development]
+run = "pnpm --filter @workspace/shaheen-cinematic-studio run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/shaheen-cinematic-studio", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/shaheen-cinematic-studio/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22445"
+BASE_PATH = "/"
