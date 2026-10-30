@@ -1,26 +1,52 @@
 # SHAHEEN CINEMATIC STUDIO
 
-A visual link-in-bio builder with a real-time smartphone preview and a standalone HTML export.
+A responsive visual link-in-bio builder with a real-time phone preview, social templates, JSON configuration import/export, and a downloadable standalone `index.html`.
 
 ## Features
 
-- Live profile editing with the SHAHEEN STUDIO image as the starting avatar
-- Four themes, three typeface options, and three preview animation modes
-- Social links that can be added, edited, reordered, and removed
-- Browser-local autosave
-- Export of the current profile as a portable `index.html`
-- Responsive React + Vite interface
+- Profile name, bio, avatar URL, or local avatar upload
+- Obsidian Black, Cyberpunk, and Royal Gold preview themes
+- Independent dark and light preview modes
+- Tajawal, Cairo, and Cinzel typography
+- Fade, Slide, and 3D Coverflow link transitions
+- Neon border/text, floating, pulse, and GSAP entrance controls
+- Social templates for Instagram, Telegram, WhatsApp, TikTok, Snapchat, Facebook, X, YouTube, GitHub, and LinkedIn
+- Custom service links, plus editable, reorderable, and removable social links
+- JSON import and export with schema validation
+- Standalone `index.html` export with the selected theme, typography, motion settings, and configured links
+- Browser-local autosave using `localStorage`
+- Responsive React + Vite interface with Tailwind CSS
+
+## Project structure
+
+```text
+artifacts/shaheen-cinematic-studio/
+├── public/
+│   ├── dashboard-background.jpg
+│   └── shaheen-Studio.png
+├── src/
+│   ├── Builder.tsx       # App state, autosave, imports, and export actions
+│   ├── Sidebar.tsx       # Profile, theme, effects, templates, and link controls
+│   ├── Preview.tsx       # Live smartphone preview and animations
+│   ├── data.ts           # Defaults, social templates, and JSON validation
+│   ├── exportHtml.ts     # Standalone HTML and JSON download generation
+│   ├── types.ts          # Profile, link, and theme types
+│   └── index.css         # Tailwind and the cinematic visual system
+├── railway.json
+├── server.mjs
+└── package.json
+```
 
 ## Run locally
 
-From the repository root:
+Run these commands from the repository root:
 
 ```sh
 pnpm install
 pnpm --filter @workspace/shaheen-cinematic-studio run dev
 ```
 
-The app's development workflow supplies `PORT` and `BASE_PATH`. When running Vite outside that workflow, the port defaults to `3000` and the base path defaults to `/`.
+The Vite server uses `PORT` when provided and otherwise defaults to `3000`. `BASE_PATH` defaults to `/`.
 
 ## Build and start
 
@@ -29,24 +55,65 @@ pnpm --filter @workspace/shaheen-cinematic-studio run build
 pnpm --filter @workspace/shaheen-cinematic-studio run start
 ```
 
-The production build is served from `dist/public` by the small Node.js server in `server.mjs`. The `start` script listens on `process.env.PORT`, falling back to port 3000 for local use.
+The build writes the static site to `artifacts/shaheen-cinematic-studio/dist/public`. `server.mjs` serves that directory and listens on Railway's `PORT` value, falling back to `3000` for local use.
 
 ## Deploy to Railway
 
-1. Create a Railway project from this repository and select the repository root as the service source.
-2. Ensure the service's Root Directory is the repository root so pnpm can see the workspace and lockfile.
-3. Railway reads `railway.json` for the workspace build command and production start command.
-4. Deploy the service and open the generated public domain.
+1. Push the repository to GitHub.
+2. In Railway, create a project and choose **Deploy from GitHub repo**.
+3. Set the service root directory to the repository root so Railway can read `pnpm-workspace.yaml` and `pnpm-lock.yaml`.
+4. Keep the repository's `railway.json`; it defines the build command, start command, health check, and restart policy.
+5. Add `NODE_ENV=production` in the service's Variables panel. Railway assigns `PORT` automatically; do not hard-code a production port.
+6. Deploy the service, wait for the health check at `/`, and generate a Railway domain from the service's Networking settings.
+
+### Railway commands
+
+Build:
+
+```sh
+pnpm --filter @workspace/shaheen-cinematic-studio run build
+```
+
+Start:
+
+```sh
+pnpm --filter @workspace/shaheen-cinematic-studio run start
+```
+
+The same commands are already set in `railway.json`:
+
+```json
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pnpm --filter @workspace/shaheen-cinematic-studio run build"
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter @workspace/shaheen-cinematic-studio run start",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 100,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
+```
 
 ### Environment variables
 
-| Variable | Value | Notes |
+| Variable | Railway value | Required |
 | --- | --- | --- |
-| `NODE_ENV` | `production` | Set in the Railway service variables. |
-| `PORT` | Railway-provided | Railway assigns this automatically; the server uses it. Use `3000` only for local runs when no port is supplied. |
+| `NODE_ENV` | `production` | Recommended for production |
+| `PORT` | Automatically assigned by Railway | Supplied by Railway; do not set a fixed value |
 
-No database, API key, or other secret is required. Builder settings are stored in the visitor's browser; exported pages are independent HTML files.
+No database, API key, or other secret is required. Builder configuration is stored in each visitor's browser; JSON and standalone HTML exports are downloaded directly.
 
-## Styling
+## Package scripts
 
-The app uses Tailwind CSS v4 through the Vite plugin. Theme tokens and the custom visual system live alongside the app's CSS; a separate `tailwind.config` file is not required for this setup.
+```json
+{
+  "dev": "vite --config vite.config.ts --host 0.0.0.0",
+  "build": "vite build --config vite.config.ts",
+  "start": "node server.mjs"
+}
+```

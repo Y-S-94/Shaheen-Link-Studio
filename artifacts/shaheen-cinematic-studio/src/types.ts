@@ -1,4 +1,5 @@
-export type Theme = 'obsidian' | 'cyberpunk' | 'royal' | 'minimal';
+export type Theme = 'obsidian' | 'cyberpunk' | 'royal';
+export type ColorMode = 'dark' | 'light';
 export type StudioFont = 'Tajawal' | 'Cairo' | 'Cinzel';
 export type LinkAnimation = 'fade' | 'slide' | 'coverflow';
 export type Platform =
@@ -11,7 +12,8 @@ export type Platform =
   | 'X'
   | 'YouTube'
   | 'GitHub'
-  | 'LinkedIn';
+  | 'LinkedIn'
+  | 'Custom';
 
 export interface Profile {
   name: string;
@@ -19,7 +21,13 @@ export interface Profile {
   avatarUrl: string;
   font: StudioFont;
   theme: Theme;
+  colorMode: ColorMode;
   animation: LinkAnimation;
+  neonBorders: boolean;
+  neonText: boolean;
+  floating: boolean;
+  glowingPulse: boolean;
+  gsapEntrance: boolean;
 }
 
 export interface SocialLink {

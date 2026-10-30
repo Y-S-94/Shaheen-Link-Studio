@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDownToLine, ExternalLink, Film, Menu, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowDownToLine, ExternalLink, FileDown, Film, Menu, RotateCcw, Sparkles } from 'lucide-react';
 import { gsap } from 'gsap';
 import Preview from './Preview';
 import Sidebar from './Sidebar';
-import { defaultState } from './data';
-import { downloadExport } from './exportHtml';
+import { defaultState, parseStudioState } from './data';
+import { downloadExport, downloadJsonExport } from './exportHtml';
 import type { Profile, SocialLink, StudioState } from './types';
 
 const STORAGE_KEY = 'shaheen-cinematic-studio-v1';
@@ -14,12 +14,7 @@ function restoreState(): StudioState {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return defaultState;
-    const parsed = JSON.parse(stored) as Partial<StudioState>;
-    if (!parsed.profile || !Array.isArray(parsed.links)) return defaultState;
-    return {
-      profile: { ...defaultState.profile, ...parsed.profile, avatarUrl: parsed.profile.avatarUrl || '/shaheen-Studio.png' },
-      links: parsed.links,
-    };
+    return parseStudioState(stored);
   } catch {
     return defaultState;
   }
@@ -71,6 +66,7 @@ export default function Builder() {
   const [state, setState] = useState<StudioState>(restoreState);
   const [saved, setSaved] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [importStatus, setImportStatus] = useState('');
   const introRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,18 +81,36 @@ export default function Builder() {
 
   useEffect(() => {
     const node = introRef.current;
-    if (!node) return;
+    if (!node || !state.profile.gsapEntrance) return;
     const context = gsap.context(() => {
       gsap.fromTo(node.querySelectorAll<HTMLElement>('[data-intro]'), { opacity: 0, y: 16, filter: 'blur(7px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .8, stagger: .09, ease: 'power3.out', clearProps: 'all' });
     }, node);
     return () => context.revert();
-  }, []);
+  }, [state.profile.gsapEntrance]);
 
   const updateProfile = (patch: Partial<Profile>) => setState((current) => ({ ...current, profile: { ...current.profile, ...patch } }));
   const updateLinks = (links: SocialLink[]) => setState((current) => ({ ...current, links }));
   const handleExport = () => downloadExport(state);
+  const handleExportJson = () => downloadJsonExport(state);
+  const handleImportFile = async (file: File) => {
+    if (file.size > 12 * 1024 * 1024) {
+      setImportStatus('Could not import: choose a JSON file smaller than 12 MB.');
+      return;
+    }
+    try {
+      const importedState = parseStudioState(await file.text());
+      setState(importedState);
+      setImportStatus('Configuration imported. Your changes are saved on this device.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'the file could not be read.';
+      setImportStatus(`Could not import: ${message}`);
+    }
+  };
   const resetStudio = () => {
-    if (window.confirm('Reset the studio to the original Shaheen setup?')) setState(defaultState);
+    if (window.confirm('Reset the studio to the original Shaheen setup?')) {
+      setState(defaultState);
+      setImportStatus('');
+    }
   };
 
   return (
@@ -112,11 +126,11 @@ export default function Builder() {
           <div className="hidden items-center gap-5 md:flex">
             <span className="flex items-center gap-2 text-[10px] tracking-[.08em] text-[#7f838d]"><span className={`h-1.5 w-1.5 rounded-full ${saved ? 'bg-emerald-300' : 'animate-pulse bg-amber-300'}`} />{saved ? 'ALL CHANGES SAVED' : 'SAVING CHANGES'}</span>
             <button data-testid="button-reset" onClick={resetStudio} className="flex items-center gap-2 text-[10px] text-[#838791] transition hover:text-[#d9c27f]"><RotateCcw size={13} />Reset studio</button>
-              <button data-testid="button-export" onClick={handleExport} className="gold-button flex items-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold tracking-[.12em]"><ArrowDownToLine size={14} />EXPORT index.html</button>
+              <button type="button" data-testid="button-export" onClick={handleExport} className="gold-button flex items-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold tracking-[.12em]"><ArrowDownToLine size={14} />Create index.html</button>
           </div>
-          <button data-testid="button-mobile-menu" aria-label="Open actions" onClick={() => setMenuOpen(!menuOpen)} className="rounded-lg border border-white/10 p-2 text-[#c7bd9f] md:hidden"><Menu size={17} /></button>
+          <button type="button" data-testid="button-mobile-menu" aria-label="Open actions" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className="rounded-lg border border-white/10 p-2 text-[#c7bd9f] md:hidden"><Menu size={17} /></button>
         </header>
-        <AnimatePresence>{menuOpen && <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="glass-panel absolute right-4 top-[70px] z-20 flex gap-3 rounded-xl p-3 md:hidden"><button data-testid="button-export-mobile" onClick={() => { handleExport(); setMenuOpen(false); }} className="gold-button flex items-center gap-2 rounded-lg px-3 py-2 text-[10px]"><ArrowDownToLine size={13} />Export index.html</button><button onClick={resetStudio} className="flex items-center gap-2 px-2 text-[10px] text-[#aaa]"><RotateCcw size={13} />Reset</button></motion.div>}</AnimatePresence>
+        <AnimatePresence>{menuOpen && <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="glass-panel absolute right-4 top-[70px] z-20 flex gap-2 rounded-xl p-3 md:hidden"><button type="button" data-testid="button-export-mobile" onClick={() => { handleExport(); setMenuOpen(false); }} className="gold-button flex items-center gap-2 rounded-lg px-3 py-2 text-[10px]"><ArrowDownToLine size={13} />Create index.html</button><button type="button" data-testid="button-export-json-mobile" onClick={() => { handleExportJson(); setMenuOpen(false); }} className="flex items-center gap-2 rounded-lg border border-white/10 px-2 py-2 text-[10px] text-[#ddd]"><FileDown size={13} />JSON</button><button type="button" onClick={resetStudio} className="flex items-center gap-2 px-2 text-[10px] text-[#c1c1c1]"><RotateCcw size={13} />Reset</button></motion.div>}</AnimatePresence>
         <main className="pt-7">
           <section data-intro className="mb-7 flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
             <div className="max-w-[590px]">
@@ -134,7 +148,7 @@ export default function Builder() {
               <div className="mb-4 flex items-center justify-between"><div><div className="flex items-center gap-2"><Sparkles size={14} className="text-[#d8b665]" /><h2 className="text-xs font-semibold tracking-wide text-[#e7e1d4]">The live frame</h2></div><p className="mt-1 text-[9px] text-[#727782]">Your page, exactly as visitors will see it</p></div><div className="flex items-center gap-1.5 text-[9px] text-[#8f949d]"><span className="h-1.5 w-1.5 rounded-full bg-[#60d5ad]" /> LIVE</div></div>
               <Preview profile={state.profile} links={state.links} />
             </div>
-            <div data-intro><Sidebar state={state} onProfileChange={updateProfile} onLinksChange={updateLinks} /></div>
+            <div data-intro><Sidebar state={state} onProfileChange={updateProfile} onLinksChange={updateLinks} onImportFile={handleImportFile} onExportJson={handleExportJson} importStatus={importStatus} /></div>
           </div>
           <footer data-intro className="mt-7 flex flex-col items-center justify-between gap-2 border-t border-white/[.07] pt-4 text-[9px] tracking-[.12em] text-[#5e626c] sm:flex-row"><span>© 2025 SHAHEEN CINEMATIC STUDIO</span><span className="flex items-center gap-2"><span className="h-px w-4 bg-[#d8b665]/40" />BUILT FOR YOUR NEXT CHAPTER<span className="h-px w-4 bg-[#d8b665]/40" /></span></footer>
         </main>
